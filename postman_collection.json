@@ -1,0 +1,201 @@
+{
+  "info": {
+    "name": "Resource Booking System API",
+    "description": "RESTful Resource Booking System - JWT auth, RBAC, resources & reservations",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "adminToken", "value": "" },
+    { "key": "userToken", "value": "" },
+    { "key": "resourceId", "value": "1" },
+    { "key": "reservationId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login as Admin",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const data = pm.response.json();",
+                "pm.collectionVariables.set('adminToken', data.token);"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"Admin@123\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Login as User",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const data = pm.response.json();",
+                "pm.collectionVariables.set('userToken', data.token);"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"user\",\n  \"password\": \"User@123\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Register New User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"newuser\",\n  \"email\": \"newuser@test.com\",\n  \"password\": \"Password@123\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Resources",
+      "item": [
+        {
+          "name": "List Resources (paginated)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/resources?page=0&size=10&sort=name,asc", "host": ["{{baseUrl}}"], "path": ["api", "resources"],
+              "query": [ {"key": "page", "value": "0"}, {"key": "size", "value": "10"}, {"key": "sort", "value": "name,asc"} ] }
+          }
+        },
+        {
+          "name": "Get Resource by Id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/resources/{{resourceId}}", "host": ["{{baseUrl}}"], "path": ["api", "resources", "{{resourceId}}"] }
+          }
+        },
+        {
+          "name": "Create Resource (ADMIN only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Board Room\",\n  \"description\": \"Executive board room\",\n  \"location\": \"Floor 5\",\n  \"capacity\": 12,\n  \"available\": true\n}" },
+            "url": { "raw": "{{baseUrl}}/api/resources", "host": ["{{baseUrl}}"], "path": ["api", "resources"] }
+          }
+        },
+        {
+          "name": "Update Resource (ADMIN only)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Board Room (Renovated)\",\n  \"description\": \"Executive board room\",\n  \"location\": \"Floor 5\",\n  \"capacity\": 14,\n  \"available\": true\n}" },
+            "url": { "raw": "{{baseUrl}}/api/resources/{{resourceId}}", "host": ["{{baseUrl}}"], "path": ["api", "resources", "{{resourceId}}"] }
+          }
+        },
+        {
+          "name": "Delete Resource (ADMIN only)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/resources/{{resourceId}}", "host": ["{{baseUrl}}"], "path": ["api", "resources", "{{resourceId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reservations",
+      "item": [
+        {
+          "name": "Create Reservation (as USER)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{userToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"resourceId\": {{resourceId}},\n  \"startTime\": \"2027-01-15T10:00:00\",\n  \"endTime\": \"2027-01-15T12:00:00\",\n  \"price\": 49.99\n}" },
+            "url": { "raw": "{{baseUrl}}/api/reservations", "host": ["{{baseUrl}}"], "path": ["api", "reservations"] }
+          }
+        },
+        {
+          "name": "List My Reservations (filter+paginate)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/reservations?status=PENDING&minPrice=10&maxPrice=100&page=0&size=10&sort=startTime,desc",
+              "host": ["{{baseUrl}}"], "path": ["api", "reservations"],
+              "query": [
+                {"key": "status", "value": "PENDING"},
+                {"key": "minPrice", "value": "10"},
+                {"key": "maxPrice", "value": "100"},
+                {"key": "page", "value": "0"},
+                {"key": "size", "value": "10"},
+                {"key": "sort", "value": "startTime,desc"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "List All Reservations (ADMIN)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/reservations?page=0&size=20", "host": ["{{baseUrl}}"], "path": ["api", "reservations"],
+              "query": [ {"key": "page", "value": "0"}, {"key": "size", "value": "20"} ] }
+          }
+        },
+        {
+          "name": "Get Reservation by Id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/reservations/{{reservationId}}", "host": ["{{baseUrl}}"], "path": ["api", "reservations", "{{reservationId}}"] }
+          }
+        },
+        {
+          "name": "Update Reservation (ADMIN only)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"CONFIRMED\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/reservations/{{reservationId}}", "host": ["{{baseUrl}}"], "path": ["api", "reservations", "{{reservationId}}"] }
+          }
+        },
+        {
+          "name": "Cancel Reservation (owner or ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/reservations/{{reservationId}}/cancel", "host": ["{{baseUrl}}"], "path": ["api", "reservations", "{{reservationId}}", "cancel"] }
+          }
+        },
+        {
+          "name": "Delete Reservation (ADMIN only)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/reservations/{{reservationId}}", "host": ["{{baseUrl}}"], "path": ["api", "reservations", "{{reservationId}}"] }
+          }
+        }
+      ]
+    }
+  ]
+}
