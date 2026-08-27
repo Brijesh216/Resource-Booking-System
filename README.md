@@ -1,6 +1,6 @@
 # Resource Booking System
 
-A secure, RESTful Resource Booking System built with **Spring Boot 3 / Java 17**, **Spring Security + JWT**, and **JPA/Hibernate** on **PostgreSQL or MySQL**.
+A secure, RESTful Resource Booking System built with **Spring Boot 3 / Java 17**, **Spring Security + JWT**, and **JPA/Hibernate** on **MySQL**.
 
 Users can browse resources and manage their own reservations; administrators have full CRUD access to resources and all reservations.
 
@@ -11,9 +11,9 @@ Users can browse resources and manage their own reservations; administrators hav
 - Java 17, Spring Boot 3.2.5
 - Spring Web, Spring Security, Spring Data JPA
 - JWT (jjwt 0.12.x) — stateless authentication
-- PostgreSQL or MySQL (JPA/Hibernate)
+- MySQL (JPA/Hibernate) — PostgreSQL is also supported via a profile switch, see below
 - Bean Validation (Jakarta Validation)
-- springdoc-openapi (Swagger UI)
+- springdoc-openapi (Swagger UI) + Postman collection
 - JUnit 5 + MockMvc + H2 (tests)
 - Lombok, Maven
 
@@ -27,7 +27,7 @@ src/main/java/com/booking/
 ├── config/          # SecurityConfig, OpenApiConfig, DataSeeder
 ├── security/         # JwtUtil, JwtAuthenticationFilter, CustomUserDetailsService,
 │                      # JwtAuthenticationEntryPoint (401), JwtAccessDeniedHandler (403)
-├── controller/        # AuthController, ResourceController, ReservationController
+├── controller/         # AuthController, ResourceController, ReservationController, HomeController
 ├── service/           # UserService, ResourceService, ReservationService
 ├── repository/        # UserRepository, ResourceRepository, ReservationRepository
 ├── entity/            # User, Role, Resource, Reservation, ReservationStatus
@@ -39,77 +39,73 @@ Clean separation: **Controller → Service → Repository**, with DTOs at the bo
 
 ---
 
-## Getting Started
+## Getting Started (MySQL)
 
 ### 1. Prerequisites
 
 - JDK 17+
-- Maven 3.8+
-- PostgreSQL 13+ **or** MySQL 8+
+- Maven 3.8+ (or use an IDE like IntelliJ, which bundles Maven support)
+- MySQL 8+ running locally
 
-### 2. Create the database
+### 2. Database
 
-**PostgreSQL:**
+You don't need to manually create the database — the JDBC URL used by the `mysql` profile includes `createDatabaseIfNotExist=true`, so MySQL creates `booking_db` automatically on first connection, as long as the server is running and your user can create databases.
+
+If you'd rather create it yourself:
 ```sql
 CREATE DATABASE booking_db;
 ```
 
-**MySQL** (or just let `createDatabaseIfNotExist=true` in the JDBC URL handle it):
-```sql
-CREATE DATABASE booking_db;
+### 3. Configuration for this setup
+
+This project runs against **MySQL** on **port 9000** (instead of the Spring Boot default of 8080) in this environment. That requires two things when running the app:
+
+**a) Activate the `mysql` Spring profile**, via one of:
+- Program arguments: `--spring.profiles.active=mysql`
+- VM options: `-Dspring.profiles.active=mysql`
+- Environment variable: `SPRING_PROFILES_ACTIVE=mysql`
+
+**b) Set environment variables** (in IntelliJ: Run → Edit Configurations → Environment variables, semicolon-separated on one line):
+```
+DB_USERNAME=root;DB_PASSWORD=<your_mysql_password>;JWT_SECRET=change-this-super-secret-key-min-32-chars-long-please;SERVER_PORT=9000
 ```
 
-### 3. Configure environment variables
-
-Copy `.env.example` to `.env` (or export the variables directly) and adjust as needed:
-
-| Variable | Default | Description |
+| Variable | Value used here | Description |
 |---|---|---|
-| `SERVER_PORT` | `8080` | HTTP port |
-| `DB_URL` | `jdbc:postgresql://localhost:5432/booking_db` | JDBC URL |
-| `DB_USERNAME` | `postgres` | DB username |
-| `DB_PASSWORD` | `postgres` | DB password |
-| `DB_DRIVER` | `org.postgresql.Driver` | JDBC driver class |
-| `DB_DIALECT` | `org.hibernate.dialect.PostgreSQLDialect` | Hibernate dialect |
-| `DDL_AUTO` | `update` | Hibernate schema strategy (`update`/`validate`/`none`) |
-| `SHOW_SQL` | `false` | Log SQL statements |
-| `JWT_SECRET` | *(dev default, change in prod)* | HMAC signing key, **min 32 characters** |
-| `JWT_EXPIRATION_MS` | `86400000` (24h) | Token lifetime in ms |
-| `LOG_LEVEL` | `INFO` | Log level for `com.booking` package |
+| `SPRING_PROFILES_ACTIVE` (or `--spring.profiles.active=mysql`) | `mysql` | Selects `application-mysql.yml` (MySQL driver/dialect/URL) |
+| `DB_USERNAME` | `root` | MySQL username |
+| `DB_PASSWORD` | *(your MySQL root password)* | MySQL password |
+| `SERVER_PORT` | `9000` | HTTP port the app listens on |
+| `JWT_SECRET` | *(min 32 chars)* | HMAC signing key for JWTs — change in production |
+| `JWT_EXPIRATION_MS` | `86400000` (24h, default) | Token lifetime in ms |
+| `DDL_AUTO` | `update` (default) | Hibernate schema strategy |
 
-> **Note:** If your shell doesn't auto-load `.env`, export the vars manually or use a tool like `direnv`/`dotenv-cli`, or simply pass them as `-D` system properties / `--define` flags when running.
+### 4. Run it
 
-### 4. Run with PostgreSQL (default)
+**From an IDE (IntelliJ):** set the above as Program arguments / Environment variables on the `BookingApplication` run configuration, then Run.
 
+**From the command line:**
 ```bash
-export DB_URL=jdbc:postgresql://localhost:5432/booking_db
-export DB_USERNAME=postgres
-export DB_PASSWORD=postgres
-export JWT_SECRET=please-change-this-to-a-long-random-secret-value
+export SPRING_PROFILES_ACTIVE=mysql
+export DB_USERNAME=root
+export DB_PASSWORD=your_mysql_password
+export SERVER_PORT=9000
+export JWT_SECRET=change-this-super-secret-key-min-32-chars-long-please
 
 mvn spring-boot:run
 ```
 
-### 5. Run with MySQL instead
-
-Activate the `mysql` Spring profile (switches driver/dialect/URL defaults):
-
-```bash
-export DB_USERNAME=root
-export DB_PASSWORD=root
-export JWT_SECRET=please-change-this-to-a-long-random-secret-value
-
-mvn spring-boot:run -Dspring-boot.run.profiles=mysql
-```
-
-### 6. Build and run the jar
-
+**As a packaged jar:**
 ```bash
 mvn clean package
-java -jar target/resource-booking-system-1.0.0.jar
+java -jar target/resource-booking-system-1.0.0.jar --spring.profiles.active=mysql
 ```
 
-The app starts on `http://localhost:8080` by default.
+The app starts on `http://localhost:9000`.
+
+### 5. Running against PostgreSQL instead
+
+The `postgres` profile (and the plain `default` profile, which also targets PostgreSQL) are still available if needed — just activate `--spring.profiles.active=postgres` and swap the DB env vars accordingly. See `application-postgres.yml` for its defaults.
 
 ---
 
@@ -128,21 +124,26 @@ Passwords are stored **BCrypt-hashed** — never in plain text.
 
 ## API Documentation
 
-Once running, Swagger UI is available at:
+This project provides both, per the assignment's "Swagger/OpenAPI or Postman" requirement — use whichever you prefer.
+
+### Postman (primary, as used in this setup)
+
+A ready-to-import collection is included: [`postman_collection.json`](./postman_collection.json).
+
+1. Postman → **Import** → select `postman_collection.json`.
+2. Open the collection's **Variables** tab and set `baseUrl` to `http://localhost:9000` (it defaults to `8080`).
+3. Run **Auth → Login as Admin** and **Auth → Login as User** first — each has a test script that automatically captures the returned JWT into the `adminToken` / `userToken` collection variables.
+4. Every other request already references `{{adminToken}}` or `{{userToken}}` in its `Authorization` header, so you can just hit **Send** on any of them afterward.
+
+### Swagger UI (alternative)
 
 ```
-http://localhost:8080/swagger-ui.html
+http://localhost:9000/swagger-ui.html
 ```
 
-Raw OpenAPI spec:
+Click **Authorize**, log in via `/auth/login`, paste `Bearer <token>`. Visiting the app's root (`http://localhost:9000/`) also redirects here automatically.
 
-```
-http://localhost:8080/v3/api-docs
-```
-
-Click **Authorize** in Swagger UI and paste `Bearer <your-jwt-token>` after logging in via `/auth/login`.
-
-A ready-to-import **Postman collection** is included: [`postman_collection.json`](./postman_collection.json). It includes a pre-request/test script that automatically captures the JWT into collection variables (`adminToken`, `userToken`) after login.
+Raw OpenAPI spec: `http://localhost:9000/v3/api-docs`
 
 ---
 
@@ -172,7 +173,7 @@ A ready-to-import **Postman collection** is included: [`postman_collection.json`
 
 RBAC is enforced at two levels:
 - **Method security** (`@PreAuthorize("hasRole('ADMIN')")`) on admin-only endpoints.
-- **Ownership checks in the service layer** for endpoints that both roles can call (e.g. `GET /api/reservations/{id}`, cancel) — a `USER` gets a `403` if they try to touch someone else's reservation, and reservation *listing* is automatically scoped to the caller's own records for `USER`s at the query level (not just filtered client-side).
+- **Ownership checks in the service layer** for endpoints both roles can call (e.g. `GET /api/reservations/{id}`, cancel) — a `USER` gets a `403` if they try to touch someone else's reservation, and reservation *listing* is automatically scoped to the caller's own records for `USER`s at the query level (not just filtered client-side).
 
 ---
 
@@ -211,7 +212,7 @@ RBAC is enforced at two levels:
 
 Example:
 ```
-GET /api/reservations?status=PENDING&minPrice=10&maxPrice=200&page=0&size=10&sort=startTime,desc
+GET http://localhost:9000/api/reservations?status=PENDING&minPrice=10&maxPrice=200&page=0&size=10&sort=startTime,desc
 ```
 
 ---
@@ -270,39 +271,50 @@ Tests run against an **in-memory H2 database** (`application-test.yml`, `@Active
 - `ResourceControllerSecurityTest` — RBAC on resource CRUD (USER read-only vs ADMIN full access), input validation, anonymous access rejection.
 - `ReservationSecurityTest` — ownership enforcement (a USER cannot view/cancel another user's reservation), JWT-derived identity on creation, ADMIN-only update/delete, status+price filtering, invalid-token rejection.
 
-> A note on this delivery: the sandbox this project was authored in has no outbound network access to Maven Central, so `mvn test` could not be executed here to produce a live pass/fail report. Every file was manually reviewed for API/signature correctness against Spring Boot 3.2.5 / Spring Security 6.2 / jjwt 0.12.5. Please run `mvn clean test` in your own environment to confirm — if anything doesn't compile, it is most likely a minor version-pin issue and easy to resolve.
-
 ---
 
 ## Sample cURL Walkthrough
 
 ```bash
 # 1. Login as admin
-TOKEN=$(curl -s -X POST http://localhost:8080/auth/login \
+TOKEN=$(curl -s -X POST http://localhost:9000/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"Admin@123"}' | jq -r .token)
 
 # 2. Create a resource
-curl -X POST http://localhost:8080/api/resources \
+curl -X POST http://localhost:9000/api/resources \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"name":"Studio A","description":"Recording studio","location":"B1","capacity":6,"available":true}'
 
 # 3. Login as user and book it
-UTOKEN=$(curl -s -X POST http://localhost:8080/auth/login \
+UTOKEN=$(curl -s -X POST http://localhost:9000/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"user","password":"User@123"}' | jq -r .token)
 
-curl -X POST http://localhost:8080/api/reservations \
+curl -X POST http://localhost:9000/api/reservations \
   -H "Authorization: Bearer $UTOKEN" -H "Content-Type: application/json" \
   -d '{"resourceId":1,"startTime":"2027-01-15T10:00:00","endTime":"2027-01-15T12:00:00","price":49.99}'
 
 # 4. List my reservations, filtered
 curl -H "Authorization: Bearer $UTOKEN" \
-  "http://localhost:8080/api/reservations?status=PENDING&page=0&size=10"
+  "http://localhost:9000/api/reservations?status=PENDING&page=0&size=10"
 ```
 
 ---
+## 📜 License
 
-## License
+This project is for educational and academic purposes.
 
-Provided as-is for evaluation/demo purposes.
+---
+
+## 👨‍💻 Author
+
+**Brijesh Prasad**
+
+🌐 Connect with me: 
+- 🔗 [LinkedIn](https://www.linkedin.com/in/brijesh216) 
+- 💻 [GitHub](https://github.com/brijesh216)
+
+---
+
+⭐ If you found this project helpful, consider giving it a star on GitHub!
